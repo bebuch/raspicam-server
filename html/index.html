@@ -1,0 +1,60 @@
+<!--
+Copyright (c) 2017 Benjamin Buch
+
+https://github.com/bebuch/http
+
+Distributed under the Boost Software License, Version 1.0. (See accompanying
+file LICENSE_1_0.txt or copy at https://www.boost.org/LICENSE_1_0.txt)
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<title>live view</title>
+</head>
+<body style="text-align:center;background:lime;padding:0;margin:0;border:0;"><!--
+	--><canvas id="image" style="max-width:100%;margin:0;padding:0;border:0;"></canvas><!--
+	--><script>
+		var image = document.getElementById("image");
+		var live_connection = false;
+		var live_image = function(service_name){
+			var socket = new WebSocket('ws://' + window.location.host + '/'
+				+ service_name);
+			socket.binaryType = 'arraybuffer';
+			socket.onmessage = function(evt){
+				console.log("onmessage");
+				if(evt.data instanceof ArrayBuffer){
+					var length = evt.data.byteLength;
+					var blob = new Blob([evt.data],{type:'image/jpeg'});
+					var url = URL.createObjectURL(blob);
+					var img = new Image();
+					img.onload = function(){
+						var ctx = image.getContext("2d");
+						if(image.width != img.width) image.width = img.width;
+						if(image.height != img.height) image.height = img.height;
+						ctx.drawImage(img, 0, 0);
+					}
+					img.src = url;
+					socket.send(JSON.stringify({'ready': true}));
+				}else if(typeof(evt.data) === 'string'){
+					console.log("onmessage string: " + evt.data);
+				}
+			};
+			socket.onopen = function(event){
+				console.log("onopen: " + JSON.stringify(event));
+				socket.send(JSON.stringify({'ready': true}));
+			};
+			socket.onerror = function(event){
+				live_connection = false;
+				console.log("onerror: " + JSON.stringify(event));
+			};
+			socket.onclose = function(event){
+				console.log("onclose: " + JSON.stringify(event));
+			};
+			return socket;
+		};
+
+		live_connection = live_image('live');
+	</script><!--
+--></body>
+</html>
